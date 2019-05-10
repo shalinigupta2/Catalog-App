@@ -47,6 +47,7 @@ def gconnect():
         return response
     # Obtain authorization code
     code = request.data
+    login_session['provider'] = 'google'
 
     try:
         # Upgrade the authorization code into a credentials object
