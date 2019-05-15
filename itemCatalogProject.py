@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, joinedload
 from setup_database import Base, Category, SubItem, User
 
 
@@ -14,6 +14,10 @@ import json
 from flask import make_response
 import requests
 
+
+# ---------------------------------------------------------
+# ClientID
+# ---------------------------------------------------------
 
 CLIENT_ID = json.loads(
     open('client_secrets.json', 'r').read())['web']['client_id']
@@ -31,6 +35,10 @@ session = DBSession()
 
 # Create a state token to prevent request frogery.
 # Store it in the session for later validation.
+# ---------------------------------------------------------
+# Functions for login handling
+# ---------------------------------------------------------
+
 @app.route('/login')
 def showLogin():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
@@ -238,6 +246,37 @@ def fbdisconnect():
     result = h.request(url, 'DELETE')[1]
     return "you have been logged out"
 
+# --------------------------------------
+# JSON APIs to show Catalog information
+# --------------------------------------
+
+
+@app.route('/catalog/catalog.json')
+def catalogsJSON():
+    """Returns JSON of all items in catalog"""
+    categories = session.query(Category).options(joinedload(Category.items)).all()
+    return jsonify(
+        Category=[
+            dict(
+                c.serialize,
+                items=[
+                    i.serialize for i in c.items]) for c in categories])
+
+
+@app.route('/catalog/<int:category_id>/JSON')
+def catalogSubItemJSON(category_id):
+    """Returns JSON of all categories in catalog"""
+    category = session.query(Category).options(
+        joinedload(
+            Category.items)).filter_by(
+        id=category_id).all()
+    return jsonify(
+        Category=[
+            dict(
+                c.serialize,
+                items=[
+                    i.serialize for i in c.items]) for c in category])
+
 
 @app.route('/')
 @app.route('/categories/')
@@ -375,7 +414,7 @@ def deleteSubItem(category_id,subitem_id):
         flash("subitem deleted successfully!")
         return redirect(url_for('showItem', category_id=category_id))
     else:
-        return render_template('deletesubitem.html', item=subitemToDelete, category_id=category_id)
+        return render_template('deletesubitem.html', subitem=subitemToDelete, category_id=category_id)
 
 
 def getUserID(email):
@@ -404,21 +443,21 @@ def disconnect():
     if 'provider' in login_session:
         if login_session['provider'] == 'google':
             gdisconnect()
-            del login_session['gplus_id']
-            del login_session['access_token']
-        if login_session['provider'] == 'facebook':
+            flash("You have successfully been logged out.")
+
+        elif login_session['provider'] == 'facebook':
             fbdisconnect()
             del login_session['facebook_id']
-        del login_session['username']
-        del login_session['email']
-        del login_session['picture']
-        del login_session['user_id']
-        del login_session['provider']
-        flash("You have successfully been logged out.")
-        return redirect(url_for('showCategories'))
-    else:
-        flash("You were not logged in")
-        return redirect(url_for('showCategories'))
+            del login_session['username']
+            del login_session['email']
+            del login_session['picture']
+            del login_session['user_id']
+            del login_session['provider']
+            flash("You have successfully been logged out.")
+            return redirect(url_for('showCategories'))
+        else:
+            flash("You were not logged in")
+    return redirect(url_for('showCategories'))
 
 
 if __name__ == '__main__':
