@@ -1,12 +1,18 @@
+
+# Import for flask and SQLalchemy
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, joinedload
 from setup_database import Base, Category, SubItem, User
 
 
+# Import for Google Oauth - login_Session object will work as a
+# dictionary to store values
 from flask import session as login_session
 import random,string
 
+
+# import for Gconnect
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
 import httplib2
@@ -41,9 +47,13 @@ session = DBSession()
 
 @app.route('/login')
 def showLogin():
+    """
+        Function to create anti-forgery state token
+    """
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
                     for x in xrange(32))
     login_session['state'] = state
+    # return "The current session state is %s" % login_session['state']
     return render_template('login.html', STATE=state)
 
 @app.route('/gconnect', methods=['POST'])
@@ -254,13 +264,20 @@ def fbdisconnect():
 @app.route('/catalog/catalog.json')
 def catalogsJSON():
     """Returns JSON of all items in catalog"""
-    categories = session.query(Category).options(joinedload(Category.items)).all()
-    return jsonify(
-        Category=[
-            dict(
-                c.serialize,
-                items=[
-                    i.serialize for i in c.items]) for c in categories])
+    categories = session.query(Category).all()
+    items = session.query(SubItem).order_by(SubItem.id).all()
+    data = []
+
+    for c in categories:
+        data.append(c.serialize)
+        subdata = []
+        for i in items:
+            if i.category_id == c.id:
+                subdata.append(i.serialize)
+        item = {"Item": subdata}
+        data.append(item)
+
+    return jsonify(Category=data)
 
 
 @app.route('/catalog/<int:category_id>/JSON')
@@ -278,15 +295,31 @@ def catalogSubItemJSON(category_id):
                     i.serialize for i in c.items]) for c in category])
 
 
+# ---------------------------------------------------------
+# Function shows all catalog items including latest 5 item
+# ---------------------------------------------------------
+
+
 @app.route('/')
 @app.route('/categories/')
 def showCategories():
     # return "This page will show all categories"
     categories = session.query(Category).all()
+    latestItems = session.query(SubItem).order_by(
+        SubItem.id.desc()).limit(5)
     if 'username' not in login_session:
-        return render_template('publiccategories.html', categories=categories)
+        return render_template('publiccategories.html',
+                               categories=categories,
+                               latestItems=latestItems)
     else:
-        return render_template('categories.html', categories=categories)
+        return render_template('categories.html',
+                               categories=categories,
+                               latestItems=latestItems)
+
+
+# ---------------------------------------------------------
+# Function to create a new category
+# ---------------------------------------------------------
 
 
 @app.route('/category/new/', methods=['GET', 'POST'])
@@ -303,6 +336,11 @@ def newCategory():
         return redirect(url_for('showCategories'))
     else:
         return render_template('newcategory.html')
+
+
+# ---------------------------------------------------------
+# Function to update/edit a category
+# ---------------------------------------------------------
 
 
 @app.route('/category/<int:category_id>/edit', methods=['GET', 'POST'])
@@ -326,16 +364,25 @@ def editCategory(category_id):
             'editcategory.html', category_id=category_id, category = editedCategory)
 
 
+# ---------------------------------------------------------
+# Function to delete a category
+# ---------------------------------------------------------
+
+
 @app.route('/category/<int:category_id>/delete', methods = ['GET','POST'])
 def deleteCategory(category_id):
     if 'username' not in login_session:
         return redirect('/login')
     # return "This page will delete a category"
     categoryToDelete = session.query(Category).filter_by(id=category_id).one()
+    categoryItems = session.query(SubItem).filter_by(
+        category_id=category_id).all()
     if categoryToDelete.user_id != login_session['user_id']:
         return "<script>function myFunction() {alert('You are not authorized to delete this category. Please create" \
                "your own category in order to delete.');}</script><body onload='myFunction()''>"
     if request.method == 'POST':
+        for categoryItem in categoryItems:
+            session.delete(categoryItem)
         session.delete(categoryToDelete)
         session.commit()
         flash("category deleted successfully!")
@@ -345,35 +392,95 @@ def deleteCategory(category_id):
             'deletedcategory.html', category_id=category_id, category=categoryToDelete)
 
 
+# ---------------------------------------------------------
+# Function shows all items in a specific category
+# ---------------------------------------------------------
+
+
 @app.route('/categories/<int:category_id>/')
 @app.route('/categories/<int:category_id>/subitem/')
 def showItem(category_id):
-    # return "This page will show subitems of a category"
-    category = session.query(Category).filter_by(id=category_id).one()
-    creator = getUserInfo(category.user_id)
-    items = session.query(SubItem).filter_by(category_id=category.id)
-    # courses = session.query(MenuItem.course).filter_by(restaurant_id=restaurant_id).distinct()
+    categories = session.query(Category)
+    # categoryId = session.query(Category).filter_by(id=category_id).one()
+    # categoryid = categoryId.id
+    categoryItems = session.query(SubItem).filter_by(
+        category_id=category_id).all()
+    categoryName = session.query(Category).filter_by(id=category_id).one()
+    creator = getUserInfo(categoryName.user_id)
+    count = session.query(SubItem).filter_by(
+        category_id=category_id).count()
     if 'username' not in login_session or creator.id != login_session['user_id']:
-        return render_template('publicitems.html', category=category, items=items, creator=creator)
+        return render_template(
+            'publicitems.html',
+            categories=categories,
+            items=categoryItems,
+            categoryName=categoryName,
+            count=count,
+            creator=creator)
     else:
-        return render_template('items.html', category=category, items=items, creator=creator)
+        return render_template(
+            'items.html',
+            categories=categories,
+            items=categoryItems,
+            categoryName=categoryName,
+            count=count,
+            creator=creator)
+
+# ---------------------------------------------------------
+# Function shows specific information about that item
+# ---------------------------------------------------------
+
+@app.route('/catalog/<int:category_id>/<int:item_id>')
+def showAboutItem(category_id, item_id):
+    item = session.query(SubItem).filter_by(id=item_id).one()
+    categoryName = session.query(Category).filter_by(id=category_id).one()
+    creator = getUserInfo(categoryName.user_id)
+    print item.description
+    if 'username' not in login_session or creator.id != login_session['user_id']:
+        return render_template(
+            'publicshowitem.html',
+            item=item,
+            category_id=category_id)
+    else:
+        return render_template(
+            'showitem.html',
+            item=item,
+            category_id=category_id)
 
 
-@app.route('/categories/<int:category_id>/subitem/new', methods=['GET', 'POST'])
-def newSubItem(category_id):
+# ---------------------------------------------------------
+# Function to add a new Item
+# ---------------------------------------------------------
+
+
+@app.route('/categories/new', methods=['GET', 'POST'])
+def newSubItem():
     if 'username' not in login_session:
         return redirect('/login')
-    # return "This page will add a new subitem in a category"
+    print "inside new item"
+    categories = session.query(Category)
     if request.method == 'POST':
-        newSubItem = SubItem(
-            name=request.form['name'], description=request.form['description'], category_id=category_id,
-            user_id = login_session['user_id'])
-        session.add(newSubItem)
+        print request.form['category_name']
+        category_name = request.form['category_name']
+        category_id = session.query(Category).filter_by(
+            name=category_name).one()
+        new_Item = SubItem(
+            name=request.form['name'],
+            description=request.form['description'],
+            category_id=category_id.id,
+            user_id=login_session['user_id'])
+        session.add(new_Item)
         session.commit()
-        flash('New Sub %s Item Successfully Created' % (newSubItem.name))
-        return redirect(url_for('showItem', category_id=category_id))
+        flash("New Item %s Created successfully" % new_Item.name)
+        return redirect(url_for('showCategories'))
     else:
-        return render_template('newsubitem.html', category_id=category_id)
+        return render_template('newSubItem.html', categories=categories)
+    # return "this page add a new item"
+
+
+# ---------------------------------------------------------
+# Function to update/edit SubItem information
+# ---------------------------------------------------------
 
 
 @app.route('/categories/<int:category_id>/<int:subitem_id>/edit', methods=['GET', 'POST'])
@@ -397,6 +504,11 @@ def editSubItem(category_id,subitem_id):
     else:
         return render_template(
             'editsubitem.html', category_id=category_id, subitem_id=subitem_id, item=editedSubItem)
+
+
+# ---------------------------------------------------------
+# Function to delete a specific item from a category
+# ---------------------------------------------------------
 
 
 @app.route('/categories/<int:category_id>/<int:subitem_id>/delete', methods=['GET', 'POST'])
