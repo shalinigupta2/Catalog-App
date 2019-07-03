@@ -1,0 +1,10 @@
+<h2>Latest Items</h2>
+
+<ul class="nav nav-pills nav-stacked">
+  {% for i in latestItems %} 
+    <li>
+      <a href= "{{url_for('showAboutItem',category_id = i.category.id ,item_id = i.id)}}" > {{i.name}}  : ({{i.category.name}}) </a>
+    </li>
+  {% endfor %}
+</ul>
+        
