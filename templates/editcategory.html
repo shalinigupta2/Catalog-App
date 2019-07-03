@@ -1,30 +1,27 @@
 {% extends "main.html" %}
 {% block content %}
-{% include "header.html" %}
-	<div class="row divider green">
-		<div class="col-md-12"></div>
-	</div>
-	<div class="row banner menu">
-		<div class="col-md-11 col-md-offset-1 padding-none">
-			<h1>Edit {{category.name}}</h1>
-		</div>
-	</div>
-	<div class="row">
-		<div class="col-md-6 col-md-offset-1 padding-top">
-			<form action="{{ url_for('editCategory',category_id = category.id)}}" method = "post">
-				<div class="form-group">
-					<label for="name">Name:</label>
-					<input type ="text" class="form-control" name="name" value="{{category.name }}">
-					<div class="padding-bottom"></div>
-					<button type="submit" class="btn btn-default" id="submit" type="submit">
-					<span class="glyphicon glyphicon-ok" aria-hidden="true"></span>Save</button>
+    {% with message = get_flashed_messages() %}
+        {% if message %}
+            <strong> {{ message }} </strong>
+        {% endif %}
+    {% endwith %}
 
-				</div>
-			</form>
-			<a href = '{{url_for('showCategories')}}'>
-				<button class="btn btn-default delete">
-				<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Cancel</button>
-			</a>
-		</div>
-	</div>
+    <div class="container card">
+        <h3 class="font-weight-bold deep-orange-lighter-hover mb-3">Edit Category</h3>
+        <form action="{{url_for('editCategory', category_id = category_id )}}"  method = 'POST'>
+            <div class="form-group row">
+                <label for="name" class="col-sm-2 col-form-label"> Name </label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" size="30"  name = 'name' placeholder = '{{categoryName}}'>
+                    </div>
+            </div>
+            <span ></span>
+            <input class="btn btn-info btn-rounded waves-effect" type='submit'  value='Edit'>
+                <button class="btn btn-warning btn-rounded waves-effect">
+                            <a href="{{url_for('showCategories')}}" style="text-decoration:none ; color: antiquewhite;">
+                <span class="glyphicon glyphicon-trash"></span>  Cancel</a>
+                </button>
+        </form>
+    </div>
+    </br>
 {% endblock %}
