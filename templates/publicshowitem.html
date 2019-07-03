@@ -1,0 +1,15 @@
+{% extends "main.html" %}
+{% block content %}
+    <div class="container card">
+        <h2 class="font-weight-bold deep-orange-lighter-hover mb-3">{{ item.name }}</h2>
+        </br>
+        <p class="brown-lighter-hover"> Description : {{ item.description }} </p>
+        </br></br>
+        <button class="btn btn-warning btn-rounded waves-effect">
+            <a href= "{{url_for('showItem',category_id = category_id)}}" style="text-decoration:none ; color: antiquewhite;">
+                <span class="glyphicon glyphicon-backward"></span>Go Back
+            </a>
+        </button>
+        </br></br></br></br></br></br></br></br></br></br>
+    </div>
+{% endblock %}
