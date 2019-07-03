@@ -1,14 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
+		<!--Font -->
 		<link href='http://fonts.googleapis.com/css?family=Roboto:400,300,700' rel='stylesheet' type='text/css'>
-		<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+		<!-- Latest compiled and minified JavaScript -->
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity=
+				"sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous">
+		</script>
+		<!-- Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity=
+				"sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+		<!-- Optional theme -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+			  integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+		<!-- Latest compiled Font Awesome -->
+		<link crossorigin='anonymous' href='https://use.fontawesome.com/releases/v5.7.0/css/all.css'
+			  integrity='sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ'
+			  rel='stylesheet'>
+		<!-- Style.css file-->
 		<link rel=stylesheet type=text/css href="{{ url_for('static', filename='styles.css') }}">
+		<!-- Google sign in  -->
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+		<script src="https://apis.google.com/js/client:platform.js?onload=start" async defer></script>
+		<script>
+		  function start() {
+			gapi.load('auth2', function () {
+			  auth2 = gapi.auth2.init({
+				client_id: '1045835805382-c591bs6odemjtenregff7patj6irhlhh.apps.googleusercontent.com'
+			  });
+			});
+		  }
+		</script>
 	</head>
-	<body>
-		<div class="container">
-			{% block content %}
-			{% endblock %}
+
+ 	<body>
+		<div>
+			<nav class="navbar navbar-inverse">
+				<div class="container-fluid">
+					<div class="navbar-header">
+						<a class="navbar-brand" href="{{url_for('showCategories')}}">Catalog App</a>
+					</div>
+					<ul class="nav navbar-nav navbar-right">
+						{%if 'username' not in session %}
+							<li><a href="{{url_for('showLogin')}}"><span class="glyphicon glyphicon-log-in"></span>
+								Login</a></li>
+						{% else %}
+							<li>
+								<a href="{{url_for('disconnect')}}"><span class="glyphicon glyphicon-log-out"></span>
+									<img src="{{ session['picture']}}" alt="profile image"
+										 class="navbar-profile-image image-responsive pull-left">
+									Logout
+								</a>
+							</li>
+						{% endif %}
+					</ul>
+				</div>
+			</nav>
 		</div>
+		{% block content %}
+		{% endblock %}
+
+		<!-- Footer -->
+		<footer class="page-footer special-color-dark pt-4">
+
+	  	</footer>
+	  <!-- Footer -->
 	</body>
 </html>
